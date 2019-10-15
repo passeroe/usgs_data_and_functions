@@ -1,7 +1,7 @@
 ---
 title: "Working with USGS Data and Functions"
-author: "Matthew Ross"
-date: "10/7/2019"
+author: "Elaina Passero"
+date: "10/14/2019"
 output: html_document
 ---
 
@@ -11,6 +11,7 @@ library(dataRetrieval)
 library(dygraphs) #Time series plotting
 library(tidyr) 
 library(xts) #Time series objects
+library(ggthemes)
 
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -153,7 +154,16 @@ plot). Please plot the `combo_data` dataset here.
 
 
 ```{r}
+plotThemes <- function(timeseries){
+  plt <- ggplot(timeseries,aes(x = Date,y = q_cfs))+
+    geom_point()+
+    theme_few()+
+    ylab("Discharge (cfs)")+
+    theme(legend.position = "top")
+  return(plt)
+}
 
+plotThemes(combo_data)
 ```
 
 
@@ -166,11 +176,13 @@ Even if your function call works, why is my function "brittle?"
 Hint: hardcoding `q_cfs = X_00060_00003` could be dangerous
 
 ```{r}
-
+verde_q <- q_downloader(site_no = '09506000',site_id = "verde")
+newriver_q <- q_downloader(site_no = '03171000',site_id = "newriv")
 ```
-
+This function is brittle because daily mean discharge may not be listed in the same way as it is in at the Lincoln site. Some sites may have different units or different codes depending on the site.
 
 ## Joining your two datasets
+** Not required for homework **
 
 Above, I combined datasets by stacking them on top of each other 
 (bind_rows), but then we had to `spread` the data anyways because
@@ -180,10 +192,17 @@ to write a function that joins your two USGS datasets by calling one of the fami
 Hint: be careful of having two `site` columns. 
 
 ```{r}
+# join_sets <- function(df1,df2){
+#   df1 %>% select(-agency_cd,-site_no,-q_cd)
+#   df2 %>% select(-agency_cd,-site_no,-q_cd)
+#   dplyr::full_join(df1,df2,by="Date",suffix=c(df1["site"][1,1],df2["site"][1,1]))
+# }
+#verde_newriv <- join_sets(verde_q,newriver_q)
+
 joiner <- function(df1,df2,qname1,qname2){
-  df <- inner_join(df1 %>% 
+  df <- inner_join(df1 %>%
                      select(Date,q_cfs),
-                   df2 %>% 
+                   df2 %>%
                      select(Date,q_cfs),by="Date") %>%
     rename(!!qname1 := 2, #Crazy rlang::tidyeval stuff I didn't want to get into
            !!qname2 := 3) %>% #Same
@@ -204,6 +223,15 @@ a dygraph. Here, I want you to make a similar function that preps *and* plots a 
 
 
 ```{r}
+xts_plotter <- function(df) {
+  wider <- xts(df %>%
+                 select(-Date),
+               order.by = df$Date)
+  dyg <- dygraph(wider)
+  return(dyg)
+}
+
+xts_plotter(joined_df)
 
 ```
 
